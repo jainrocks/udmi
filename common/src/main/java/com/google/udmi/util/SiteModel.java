@@ -666,6 +666,7 @@ public class SiteModel {
 
     writeFile(deviceMetadata, deviceMetadataFile);
   }
+
   public static class MetadataException extends Metadata {
 
     public final File file;
