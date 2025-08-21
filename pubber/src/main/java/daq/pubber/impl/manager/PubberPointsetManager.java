@@ -140,7 +140,7 @@ public class PubberPointsetManager extends PubberManager implements PointsetMana
   public void updatePointConfig(AbstractPoint point, PointPointsetConfig pointConfig) {
     boolean isFastWrite = isFastWrite();
     boolean isDelayWrite = isDelayWrite();
-    
+
     if (isFastWrite) {
       PointsetManager.super.updatePointConfig(point, pointConfig);
     } else if (isDelayWrite) {
