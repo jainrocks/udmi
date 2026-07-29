@@ -41,7 +41,6 @@ import com.github.fge.jsonschema.main.JsonSchema;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.google.common.collect.Sets.SetView;
 import com.google.daq.mqtt.util.CloudDeviceSettings;
 import com.google.daq.mqtt.util.CloudIotManager;
 import com.google.daq.mqtt.util.ConfigManager;
@@ -156,6 +155,10 @@ class LocalDevice implements SiteDevice {
           ES_CERT_TYPE, ES_CERT_PEM);
   private static final Set<String> OPTIONAL_FILES =
       ImmutableSet.of(
+          RSA_PRIVATE_PEM,
+          RSA_PRIVATE_PKCS8,
+          ES_PRIVATE_PEM,
+          ES_PRIVATE_PKCS8,
           RSA_PRIVATE_CRT,
           RSA_PRIVATE_CSR,
           RSA2_PUBLIC_PEM,
@@ -360,6 +363,9 @@ class LocalDevice implements SiteDevice {
     checkNotNull(files, "No files found in " + deviceDir.getAbsolutePath());
     Set<String> actualFiles = ImmutableSet.copyOf(files);
     Set<String> expectedFiles = Sets.union(DEVICE_FILES, keyFiles());
+    if (getKeyBytes() == null && hasCloudConnection()) {
+      System.err.printf("INFO: No private key found for device %s%n", deviceId);
+    }
     SortedSet<String> missing = new TreeSet<>(Sets.difference(expectedFiles, actualFiles));
     if (!missing.isEmpty()) {
       exceptionMap.put(ExceptionCategory.missing,
@@ -505,7 +511,7 @@ class LocalDevice implements SiteDevice {
         IOUtils.toString(new FileInputStream(deviceKeyFile), Charset.defaultCharset()));
   }
 
-  private Set<String> keyFiles() {
+  public Set<String> keyFiles() {
     if (!isGateway() && !isDirect()) {
       return ImmutableSet.of();
     }
@@ -513,12 +519,10 @@ class LocalDevice implements SiteDevice {
     Set<String> certFile = getCertFiles();
     String keyFile = getPublicKeyFile();
     Set<String> publicKeyFiles = keyFile != null ? Set.of(keyFile) : Set.of();
-    Set<String> privateKeyFiles = getPrivateKeyFiles();
-    SetView<String> combined = Sets.union(publicKeyFiles, privateKeyFiles);
     boolean addCertFile =
         authType != null && (authType.equals(ES_CERT_TYPE) || authType.equals(
             RSA_CERT_TYPE));
-    return addCertFile ? Sets.union(combined, certFile) : combined;
+    return addCertFile ? Sets.union(publicKeyFiles, certFile) : publicKeyFiles;
   }
 
   private Set<String> getPrivateKeyFiles() {

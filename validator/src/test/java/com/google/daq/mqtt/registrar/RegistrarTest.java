@@ -102,6 +102,18 @@ public class RegistrarTest {
   }
 
   @Test
+  public void noPrivateKeyInfoTest() {
+    Registrar registrar = getRegistrar(ImmutableList.of());
+    registrar.execute(() -> {
+      LocalDevice device = registrar.getWorkingDevices().get(GATEWAY_ID);
+      // Remove or verify private key presence behavior
+      Set<String> keyFiles = device.keyFiles();
+      assertTrue("keyFiles should not require private keys",
+          keyFiles.stream().noneMatch(f -> f.contains("private")));
+    });
+  }
+
+  @Test
   public void blockDevicesTest() {
     List<MockAction> mockActions = executeRegistrarPopulated(ImmutableList.of("-b"));
     List<MockAction> blockActions = filterActions(mockActions, BLOCK_DEVICE_ACTION);

@@ -1041,7 +1041,9 @@ public class Registrar {
       attributes.put("deviceRegistryId", cloudIotManager.executionConfiguration.registry_id);
       attributes.put("deviceRegistryLocation", cloudIotManager.executionConfiguration.cloud_region);
       SwarmMessage swarmMessage = new SwarmMessage();
-      swarmMessage.key_base64 = Base64.getEncoder().encodeToString(localDevice.getKeyBytes());
+      byte[] keyBytes = localDevice.getKeyBytes();
+      swarmMessage.key_base64 =
+          keyBytes != null ? Base64.getEncoder().encodeToString(keyBytes) : null;
       swarmMessage.device_metadata = localDevice.getMetadata();
       String swarmString = OBJECT_MAPPER.writeValueAsString(swarmMessage);
       feedPusher.sendMessage(attributes, swarmString);
