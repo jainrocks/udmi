@@ -98,6 +98,10 @@ if [[ -d "$SITE_MODEL_PATH/reflector" ]]; then
     if [[ ! -f "$SITE_MODEL_PATH/reflector/ca.crt" && -f "$SITE_MODEL_PATH/reflector/rsa_private.crt" ]]; then
         cp "$SITE_MODEL_PATH/reflector/rsa_private.crt" "$SITE_MODEL_PATH/reflector/ca.crt"
     fi
+    if [[ ! -f "$SITE_MODEL_PATH/reflector/rsa_private.pkcs8" && -f "$SITE_MODEL_PATH/reflector/rsa_private.pem" ]]; then
+        echo "Generating PKCS#8 DER private key for reflector client..."
+        openssl pkcs8 -topk8 -inform PEM -outform DER -in "$SITE_MODEL_PATH/reflector/rsa_private.pem" -nocrypt -out "$SITE_MODEL_PATH/reflector/rsa_private.pkcs8" || true
+    fi
 fi
 
 mkdir -p "$SITE_MODEL_PATH/out"

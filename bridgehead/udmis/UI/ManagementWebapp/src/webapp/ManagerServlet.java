@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -81,6 +82,7 @@ public class ManagerServlet extends HttpServlet {
         ValidatorManager validatorManager = new ValidatorManager();
         SiteModelManager modelManager = new SiteModelManager();
         RegistrarManager registrarManager = new RegistrarManager();
+        SequencerManager sequencerManager = new SequencerManager();
 
         String action = request.getParameter("action");
         if (action == null) {
@@ -118,6 +120,26 @@ public class ManagerServlet extends HttpServlet {
             case RUN_VALIDATOR:{
                 reply = validatorManager.startValidator();
             }break;
+            case RUN_SEQUENCER:{
+                String deviceId = request.getParameter("deviceId");
+                String minStage = request.getParameter("minStage");
+                String sequences = request.getParameter("sequences");
+                JsonObject seqResponse = sequencerManager.startSequencer(deviceId, minStage, sequences);
+                reply = seqResponse.toString();
+            }break;
+            case SEQUENCER_STATUS:{
+                String deviceId = request.getParameter("deviceId");
+                JsonObject seqStatus = sequencerManager.getSequencerSummaryJson(deviceId);
+                reply = seqStatus.toString();
+            }break;
+            case SEQUENCER_REPORT:{
+                String deviceId = request.getParameter("deviceId");
+                reply = sequencerManager.getSequencerResultsHtml(deviceId);
+            }break;
+            case GET_SEQUENCER_DEVICES:{
+                Gson gson = new Gson();
+                reply = gson.toJson(sequencerManager.getDeviceList());
+            }break;
             default: {
                 String brokerStatus = mqttConnection.getConnectionStatus();
                 model.put(BROKER_STATUS, brokerStatus);
@@ -127,6 +149,20 @@ public class ManagerServlet extends HttpServlet {
                 model.put("validatorBtnText", Objects.equals(validatorStatus, RUNNING) ? "Restart Validator" : "Start Validator");
                 model.put("validatorStatus", validatorStatus);
                 model.put("validatorStatusColour", getBadgeColour(validatorStatus));
+
+                List<String> deviceList = sequencerManager.getDeviceList();
+                String defaultDevice = deviceList.isEmpty() ? "AHU-1" : deviceList.get(0);
+                String sequencerStatus = sequencerManager.getStatus(defaultDevice);
+                model.put("sequencerStatus", sequencerStatus);
+                model.put("sequencerStatusColour", getBadgeColour(sequencerStatus));
+                model.put("sequencerDeviceList", deviceList);
+                model.put("sequencerResultsBody", sequencerManager.getSequencerResultsHtml(defaultDevice));
+                JsonObject seqSummary = sequencerManager.getSequencerSummaryJson(defaultDevice);
+                model.put("sequencerTotal", seqSummary.get("total").getAsInt());
+                model.put("sequencerPassed", seqSummary.get("passed").getAsInt());
+                model.put("sequencerFailed", seqSummary.get("failed").getAsInt());
+                model.put("sequencerSkipped", seqSummary.get("skipped").getAsInt());
+                model.put("sequencerLastRun", seqSummary.get("lastRun").getAsString());
 
                 model.put(CONNECTED_CLIENT_COUNT, mqttConnection.getClientCount());
                 model.put(SUBSCRIPTION_COUNT, mqttConnection.getSubscriptionCount());
@@ -243,5 +279,10 @@ public class ManagerServlet extends HttpServlet {
     private static final String GET_DEVICE_METADATA = "getMetadata";
     private static final String RUN_REGISTRAR = "runRegistrar";
     private static final String RUN_VALIDATOR = "runValidator";
+    private static final String RUN_SEQUENCER = "runSequencer";
+    private static final String SEQUENCER_STATUS = "sequencerStatus";
+    private static final String SEQUENCER_REPORT = "sequencerReport";
+    private static final String GET_SEQUENCER_DEVICES = "getSequencerDevices";
 }
+
 

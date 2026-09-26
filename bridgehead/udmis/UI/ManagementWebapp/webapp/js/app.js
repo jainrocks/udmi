@@ -135,21 +135,42 @@ function searchFunction(input) {
 }
 
 const summaryBtn = document.getElementById('summary-tab');
+const sequencerBtn = document.getElementById('sequencer-tab');
 const editBtn = document.getElementById('edit-tab');
 const summaryPage = document.getElementById('summary-page');
+const sequencerPage = document.getElementById('sequencer-page');
 const editPage = document.getElementById('edit-device-page');
+
 summaryBtn.addEventListener("click", () => {
   editPage.classList.remove('active');
+  sequencerPage.classList.remove('active');
   summaryPage.classList.add('active');
   editBtn.classList.remove('active');
+  sequencerBtn.classList.remove('active');
   summaryBtn.classList.add('active');
+})
+
+sequencerBtn.addEventListener("click", () => {
+  summaryPage.classList.remove('active');
+  editPage.classList.remove('active');
+  sequencerPage.classList.add('active');
+  summaryBtn.classList.remove('active');
+  editBtn.classList.remove('active');
+  sequencerBtn.classList.add('active');
+  loadSequencerDevices();
+  const selectedDev = document.getElementById('sequencer-device-select').value;
+  if (selectedDev) {
+    refreshSequencerData(selectedDev);
+  }
 })
 
 editBtn.addEventListener("click", () => {
   summaryPage.classList.remove('active');
+  sequencerPage.classList.remove('active');
   editPage.classList.add('active');
-  editBtn.classList.add('active');
   summaryBtn.classList.remove('active');
+  sequencerBtn.classList.remove('active');
+  editBtn.classList.add('active');
   const deviceList = document.getElementById('device-search');
   searchFunction(deviceList);
 })
@@ -296,4 +317,152 @@ function hide(element) {
 function show(element) {
   element.style.visibility = 'visible';
   element.style.display = 'block';
+}
+
+/* Sequencer Controls */
+const runSequencerBtn = document.getElementById('run-sequencer-btn');
+const refreshSequencerBtn = document.getElementById('refresh-sequencer');
+const sequencerStatusBadge = document.getElementById('sequencer-status');
+const sequencerDeviceSelect = document.getElementById('sequencer-device-select');
+const sequencerStageSelect = document.getElementById('sequencer-stage-select');
+const sequencerSequencesInput = document.getElementById('sequencer-sequences-input');
+
+let sequencerPollInterval = null;
+
+function loadSequencerDevices() {
+  if (!sequencerDeviceSelect) return;
+  fetch('?action=getSequencerDevices')
+    .then(response => response.json())
+    .then(devices => {
+      const currentVal = sequencerDeviceSelect.value;
+      sequencerDeviceSelect.innerHTML = '';
+      devices.forEach(dev => {
+        const opt = document.createElement('option');
+        opt.value = dev;
+        opt.textContent = dev;
+        if (dev === currentVal) opt.selected = true;
+        sequencerDeviceSelect.appendChild(opt);
+      });
+    })
+    .catch(err => console.error('Error fetching sequencer devices:', err));
+}
+
+if (sequencerDeviceSelect) {
+  sequencerDeviceSelect.addEventListener('change', () => {
+    refreshSequencerData(sequencerDeviceSelect.value);
+  });
+}
+
+if (refreshSequencerBtn) {
+  refreshSequencerBtn.addEventListener('click', () => {
+    const dev = sequencerDeviceSelect ? sequencerDeviceSelect.value : '';
+    if (dev) {
+      refreshSequencerData(dev);
+    }
+  });
+}
+
+function refreshSequencerData(deviceId) {
+  if (!deviceId) return;
+  fetch(`?action=sequencerStatus&deviceId=${encodeURIComponent(deviceId)}`)
+    .then(response => response.json())
+    .then(summary => {
+      updateSequencerSummary(summary);
+    })
+    .catch(err => console.error('Error fetching sequencer status:', err));
+
+  fetch(`?action=sequencerReport&deviceId=${encodeURIComponent(deviceId)}`)
+    .then(response => response.text())
+    .then(html => {
+      const resultsTable = document.getElementById('sequencer-results-table-body');
+      if (resultsTable) {
+        resultsTable.innerHTML = html;
+      }
+    })
+    .catch(err => console.error('Error fetching sequencer report:', err));
+}
+
+function updateSequencerSummary(summary) {
+  if (!summary) return;
+  const statusElem = document.getElementById('sequencer-status');
+  const totalElem = document.getElementById('sequencer-total');
+  const passedElem = document.getElementById('sequencer-passed');
+  const failedElem = document.getElementById('sequencer-failed');
+  const skippedElem = document.getElementById('sequencer-skipped');
+  const lastRunElem = document.getElementById('sequencer-last-run');
+
+  if (statusElem) {
+    statusElem.className = 'badge';
+    statusElem.textContent = summary.status || 'Not Started';
+    if (summary.status === 'Running') {
+      statusElem.classList.add('badge-yellow');
+    } else if (summary.status === 'Completed') {
+      statusElem.classList.add('badge-green');
+    } else if (summary.status === 'Failed') {
+      statusElem.classList.add('badge-red');
+    } else {
+      statusElem.classList.add('badge-yellow');
+    }
+  }
+
+  if (totalElem) totalElem.textContent = summary.total !== undefined ? summary.total : '0';
+  if (passedElem) passedElem.textContent = summary.passed !== undefined ? summary.passed : '0';
+  if (failedElem) failedElem.textContent = summary.failed !== undefined ? summary.failed : '0';
+  if (skippedElem) skippedElem.textContent = summary.skipped !== undefined ? summary.skipped : '0';
+  if (lastRunElem) lastRunElem.textContent = summary.lastRun || ' --- ';
+}
+
+if (runSequencerBtn) {
+  runSequencerBtn.addEventListener('click', () => {
+    const deviceId = sequencerDeviceSelect ? sequencerDeviceSelect.value : '';
+    const minStage = sequencerStageSelect ? sequencerStageSelect.value : 'PREVIEW';
+    const sequences = sequencerSequencesInput ? sequencerSequencesInput.value : '';
+
+    if (!deviceId) {
+      showErrorMessage('Please select a target device.');
+      return;
+    }
+
+    runSequencerBtn.disabled = true;
+    if (sequencerStatusBadge) {
+      sequencerStatusBadge.className = 'badge badge-yellow';
+      sequencerStatusBadge.textContent = 'Running...';
+    }
+
+    fetch(`?action=runSequencer&deviceId=${encodeURIComponent(deviceId)}&minStage=${encodeURIComponent(minStage)}&sequences=${encodeURIComponent(sequences)}`)
+      .then(response => response.json())
+      .then(data => {
+        showInfoMessage('Sequencer started for ' + deviceId);
+        startPollingSequencer(deviceId);
+      })
+      .catch(err => {
+        showErrorMessage('Failed to start Sequencer: ' + err);
+        runSequencerBtn.disabled = false;
+      });
+  });
+}
+
+function startPollingSequencer(deviceId) {
+  if (sequencerPollInterval) clearInterval(sequencerPollInterval);
+  sequencerPollInterval = setInterval(() => {
+    fetch(`?action=sequencerStatus&deviceId=${encodeURIComponent(deviceId)}`)
+      .then(response => response.json())
+      .then(summary => {
+        updateSequencerSummary(summary);
+        if (summary.status !== 'Running') {
+          clearInterval(sequencerPollInterval);
+          sequencerPollInterval = null;
+          if (runSequencerBtn) runSequencerBtn.disabled = false;
+          refreshSequencerData(deviceId);
+          if (summary.status === 'Completed') {
+            showInfoMessage('Sequencer finished successfully.');
+          } else {
+            showErrorMessage('Sequencer finished with failures.');
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Error polling sequencer status:', err);
+      });
+  }, 3000);
 }

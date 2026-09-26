@@ -169,6 +169,22 @@ To run the validator service in the background to validate telemetry in real-tim
 docker exec -d validator bin/validator site_model/ //mqtt/mosquitto
 ```
 
+## Sequencer
+
+The Sequencer tool executes automated UDMI sequence compliance tests against a target Device Under Test (DUT) over MQTT.
+
+### CLI Execution
+Run the sequencer inside the `validator` container against a registered target device:
+```bash
+# Run full sequencer suite for device GAT-123
+docker exec validator bin/sequencer -v site_model/ //mqtt/mosquitto GAT-123
+
+# Run a specific sequence (e.g. system_last_update)
+docker exec validator bin/sequencer -v site_model/ //mqtt/mosquitto GAT-123 system_last_update
+```
+
+Test results and summaries are written to `site_model/out/devices/<DEVICE_ID>/RESULT.log` and `site_model/out/sequencer_<DEVICE_ID>.json`.
+
 ## Diagnostics
 
 ### UI
@@ -183,10 +199,12 @@ The UI allows you to:
 - See last time the registrar tool was run.
 - View the validation status of devices.
 - View the registration status of devices.
+- View real-time Sequencer test execution and compliance results matrix.
 
 #### 2. Interact
  - Start/restart the validator Service
  - Execute the registrar tool
+ - Run automated Sequencer tests for any registered device with custom stage and sequence filters
  - Edit device metadata
 
 ### InfluxDB

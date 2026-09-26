@@ -11,6 +11,7 @@
 <div class="tabs" id="mainNav" style="display:flex; align-items:center; justify-content:space-between;">
     <div style="display:flex; gap:10px; align-items:center;">
         <button class="tab active" id="summary-tab">Summary</button>
+        <button class="tab" id="sequencer-tab">Sequencer</button>
         <button class="tab" id="edit-tab">Edit Device</button>
         <div class="tab-button-container">
             <button id="registrar-btn" class="tab-button">Run Registrar</button>
@@ -112,6 +113,95 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="sequencer-page" class="page${(page == 'sequencer')?then(' active','')}">
+    <div id="dashboard-header">
+        <h1>UDMI Sequencer Compliance Testing</h1>
+        <h3>Sequencer Status: <span id="sequencer-status" class="badge badge-${sequencerStatusColour}">${sequencerStatus}</span></h3>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-panel">
+            <h3>Total Tests</h3>
+            <div id="sequencer-total" class="stat-value">${sequencerTotal!0}</div>
+        </div>
+
+        <div class="stat-panel">
+            <h3>Passed</h3>
+            <div id="sequencer-passed" class="stat-value" style="color: #155724;">${sequencerPassed!0}</div>
+        </div>
+
+        <div class="stat-panel">
+            <h3>Failed</h3>
+            <div id="sequencer-failed" class="stat-value" style="color: #721c24;">${sequencerFailed!0}</div>
+        </div>
+
+        <div class="stat-panel">
+            <h3>Skipped</h3>
+            <div id="sequencer-skipped" class="stat-value" style="color: #856404;">${sequencerSkipped!0}</div>
+        </div>
+
+        <div class="stat-panel">
+            <h3>Last Run</h3>
+            <div id="sequencer-last-run" class="stat-value" style="font-size: 1.8em;">${sequencerLastRun!" --- "}</div>
+        </div>
+    </div>
+
+    <div class="device-status-panel" style="margin-bottom: 20px;">
+        <h2 class="panel-title">Run Sequencer Configuration</h2>
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+            <div>
+                <label for="sequencer-device-select"><strong>Target Device:</strong></label>
+                <select id="sequencer-device-select" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;">
+                    <#if sequencerDeviceList??>
+                        <#list sequencerDeviceList as dev>
+                            <option value="${dev}">${dev}</option>
+                        </#list>
+                    </#if>
+                </select>
+            </div>
+            <div>
+                <label for="sequencer-stage-select"><strong>Minimum Stage:</strong></label>
+                <select id="sequencer-stage-select" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;">
+                    <option value="PREVIEW" selected>PREVIEW (Default)</option>
+                    <option value="ALPHA">ALPHA</option>
+                    <option value="=ALPHA">=ALPHA (Alpha Only)</option>
+                    <option value="BETA">BETA</option>
+                    <option value="STABLE">STABLE</option>
+                </select>
+            </div>
+            <div style="flex-grow: 1;">
+                <label for="sequencer-sequences-input"><strong>Specific Tests (optional):</strong></label>
+                <input type="text" id="sequencer-sequences-input" placeholder="e.g. system_last_update pointset_numeric_values" style="width: 100%; box-sizing: border-box; padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;">
+            </div>
+            <div style="align-self: flex-end;">
+                <button id="run-sequencer-btn" class="tab-button" style="padding: 8px 18px; font-size: 14px; cursor: pointer;">Run Sequencer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="device-status-panel">
+        <h2 class="panel-title">
+            Sequencer Results Matrix
+            <button id="refresh-sequencer" class="refresh-btn" title="Refresh Results">&#8635;</button>
+        </h2>
+        <div class="device-list-container">
+            <table>
+                <thead>
+                <tr>
+                    <th>Test Name</th>
+                    <th>Category</th>
+                    <th>Result</th>
+                    <th>Details</th>
+                </tr>
+                </thead>
+                <tbody id="sequencer-results-table-body">
+                ${sequencerResultsBody!""}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
